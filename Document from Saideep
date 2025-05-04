@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advanced Notepad App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .dark-mode {
+      background: #121212;
+      color: #f0f0f0;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .dark-mode .container {
+      background: #1e1e1e;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    textarea {
+      width: 100%;
+      height: 300px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      resize: none;
+      box-sizing: border-box;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    button {
+      flex: 1;
+      min-width: 30%;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .save { background: #4CAF50; }
+    .load { background: #2196F3; }
+    .clear { background: #f44336; }
+    .export { background: #ff9800; }
+    .dark-toggle { background: #555; }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .dark-mode .modal-content {
+      background: #2a2a2a;
+      color: white;
+    }
+
+    .note-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .note-item span {
+      flex-grow: 1;
+    }
+
+    .note-item button {
+      margin-left: 10px;
+      font-size: 14px;
+      padding: 5px 10px;
+    }
+
+    .close-modal {
+      float: right;
+      cursor: pointer;
+      font-size: 18px;
+      color: #aaa;
+    }
+
+    .close-modal:hover {
+      color: black;
+    }
+
+    .timestamp {
+      font-size: 0.9em;
+      color: gray;
+      margin-top: 5px;
+    }
+
+    .dark-mode .timestamp {
+      color: lightgray;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Advanced Notepad</h1>
+    <input type="text" id="noteTitle" placeholder="Enter note title..." />
+    <textarea id="noteArea" placeholder="Write your note here..."></textarea>
+    <div class="timestamp" id="lastSaved"></div>
+    <div class="buttons">
+      <button class="save" onclick="saveNote()">Save</button>
+      <button class="load" onclick="openModal()">Load Notes</button>
+      <button class="clear" onclick="clearCurrentNote()">Clear</button>
+      <button class="export" onclick="exportNote()">Export</button>
+      <button class="dark-toggle" onclick="toggleDarkMode()">Dark Mode</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="noteModal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeModal()">&times;</span>
+      <h3>Saved Notes</h3>
+      <div id="notesList"></div>
+    </div>
+  </div>
+
+  <script>
+    const noteTitle = document.getElementById('noteTitle');
+    const noteArea = document.getElementById('noteArea');
+    const modal = document.getElementById('noteModal');
+    const notesList = document.getElementById('notesList');
+    const lastSaved = document.getElementById('lastSaved');
+
+    // Auto-save on typing (debounced)
+    let typingTimer;
+    noteArea.addEventListener('input', () => {
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(saveNoteAuto, 1000);
+    });
+
+    function saveNote() {
+      const title = noteTitle.value.trim();
+      const content = noteArea.value;
+
+      if (!title) {
+        alert("Please enter a title.");
+        return;
+      }
+
+      const note = {
+        content,
+        timestamp: new Date().toLocaleString()
+      };
+
+      localStorage.setItem("note_" + title, JSON.stringify(note));
+      lastSaved.textContent = "Last saved: " + note.timestamp;
+      alert("Note saved!");
+    }
+
+    function saveNoteAuto() {
+      const title = noteTitle.value.trim();
+      if (!title) return;
+
+      const note = {
+        content: noteArea.value,
+        timestamp: new Date().toLocaleString()
+      };
+
+      localStorage.setItem("note_" + title, JSON.stringify(note));
+      lastSaved.textContent = "Auto-saved: " + note.timestamp;
+    }
+
+    function loadNote(title) {
+      const data = localStorage.getItem("note_" + title);
+      if (data) {
+        const note = JSON.parse(data);
+        noteTitle.value = title;
+        noteArea.value = note.content;
+        lastSaved.textContent = "Last saved: " + note.timestamp;
+        closeModal();
+      }
+    }
+
+    function deleteNote(title) {
+      if (confirm(`Delete note "${title}"?`)) {
+        localStorage.removeItem("note_" + title);
+        updateNotesList();
+      }
+    }
+
+    function clearCurrentNote() {
+      noteTitle.value = "";
+      noteArea.value = "";
+      lastSaved.textContent = "";
+    }
+
+    function exportNote() {
+      const title = noteTitle.value.trim() || "untitled";
+      const content = noteArea.value;
+      const blob = new Blob([content], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${title}.txt`;
+      link.click();
+    }
+
+    function openModal() {
+      updateNotesList();
+      modal.style.display = "flex";
+    }
+
+    function closeModal() {
+      modal.style.display = "none";
+    }
+
+    function updateNotesList() {
+      notesList.innerHTML = "";
+
+      const keys = Object.keys(localStorage).filter(k => k.startsWith("note_"));
+      if (keys.length === 0) {
+        notesList.innerHTML = "<p>No notes saved.</p>";
+        return;
+      }
+
+      keys.forEach(key => {
+        const title = key.replace("note_", "");
+        const data = JSON.parse(localStorage.getItem(key));
+
+        const div = document.createElement("div");
+        div.className = "note-item";
+
+        const span = document.createElement("span");
+        span.textContent = `${title} (${data.timestamp})`;
+
+        const loadBtn = document.createElement("button");
+        loadBtn.textContent = "Load";
+        loadBtn.onclick = () => loadNote(title);
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.onclick = () => deleteNote(title);
+
+        div.appendChild(span);
+        div.appendChild(loadBtn);
+        div.appendChild(delBtn);
+        notesList.appendChild(div);
+      });
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+      localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
+    }
+
+    // Restore dark mode
+    if (localStorage.getItem("darkMode") === "true") {
+      document.body.classList.add("dark-mode");
+    }
+
+    // Close modal on click outside
+    window.onclick = function(event) {
+      if (event.target === modal) {
+        closeModal();
+      }
+    };
+  </script>
+</body>
+</html>
